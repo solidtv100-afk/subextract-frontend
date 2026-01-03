@@ -123,9 +123,14 @@
         );
 
         if (!response.ok) {
-          statusText.textContent = "Unable to fetch subtitles.";
-          button.disabled = false;
-          return;
+  let message = "Unable to fetch subtitles.";
+  try {
+    const data = await response.json();
+    if (data.error) message = data.error;
+  } catch (e) {}
+  statusText.textContent = message;
+  button.disabled = false;
+  return;
         }
 
         const blob = await response.blob();
