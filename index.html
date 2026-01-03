@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube Subtitle Extractor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+    }
+    button {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h2>YouTube Subtitle Extractor</h2>
+
+<input id="yturl" placeholder="Paste YouTube video link">
+
+<select id="mode">
+  <option value="ultra">Ultra Clean (Recommended)</option>
+  <option value="clean">Clean</option>
+  <option value="raw">Raw</option>
+</select>
+
+<button onclick="downloadSubtitles()">Download TXT</button>
+
+<p id="status"></p>
+
+<script>
+async function downloadSubtitles() {
+  const url = document.getElementById("yturl").value.trim();
+  const mode = document.getElementById("mode").value;
+  const status = document.getElementById("status");
+
+  if (!url) {
+    status.innerText = "Please paste a YouTube link.";
+    return;
+  }
+
+  status.innerText = "Processing… please wait";
+
+  const API = "https://YOUR-RENDER-APP.onrender.com/download";
+
+  try {
+    const res = await fetch(
+      `${API}?url=${encodeURIComponent(url)}&mode=${mode}`
+    );
+
+    if (!res.ok) throw new Error("Subtitles not available");
+
+    const text = await res.text();
+    const blob = new Blob([text], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "subtitles.txt";
+    a.click();
+
+    status.innerText = "Download started ✅";
+  } catch (e) {
+    status.innerText = e.message;
+  }
+}
+</script>
+
+<hr>
+<footer>
+  © 2026 SubExtract |
+  <a href="about.html">About</a> |
+  <a href="privacy.html">Privacy</a>
+</footer>
+
+</body>
+</html>
