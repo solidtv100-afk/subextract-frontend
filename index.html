@@ -1,161 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>YouTube Subtitle Downloader</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="UTF-8">
+<title>YouTube Subtitle Downloader – TXT</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f7f7f7;
-      margin: 0;
-      padding: 20px;
-    }
-    .box {
-      max-width: 480px;
-      margin: auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    h1 {
-      font-size: 20px;
-      margin-bottom: 10px;
-    }
-    input {
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      margin-top: 10px;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 15px;
-      font-size: 16px;
-      background: #2563eb;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:disabled {
-      background: #999;
-      cursor: not-allowed;
-    }
-    .msg {
-      margin-top: 15px;
-      font-size: 14px;
-    }
-    .hint {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #555;
-    }
-  </style>
+<meta name="description" content="Download English YouTube subtitles as TXT. Free, fast, mobile-friendly.">
+<meta name="robots" content="index, follow">
+
+<style>
+:root {
+  --bg: #020617;
+  --card: #0f172a;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --accent: #22c55e;
+  --danger: #ef4444;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(180deg, #020617, #020617);
+  color: var(--text);
+}
+
+.container {
+  max-width: 420px;
+  margin: auto;
+  padding: 24px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0,0,0,.45);
+}
+
+h1 {
+  font-size: 22px;
+  text-align: center;
+  margin: 0 0 6px;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+input {
+  width: 100%;
+  padding: 14px 16px;
+  margin-top: 18px;
+  border-radius: 12px;
+  border: 1px solid #1e293b;
+  background: #020617;
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+
+input:focus {
+  border-color: var(--accent);
+}
+
+button {
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--accent);
+  color: #022c22;
+}
+
+button:disabled {
+  background: #334155;
+  color: #cbd5f5;
+  cursor: not-allowed;
+}
+
+.status {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 14px;
+  min-height: 20px;
+}
+
+footer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 18px;
+}
+</style>
 </head>
+
 <body>
-
-  <div class="box">
+<div class="container">
+  <div class="card">
     <h1>YouTube Subtitle Downloader</h1>
-    <p>Paste a YouTube link to download clean English subtitles (TXT).</p>
-
-    <input
-      id="videoUrl"
-      type="text"
-      placeholder="https://www.youtube.com/watch?v=VIDEOID"
-    />
-
-    <button id="downloadBtn" onclick="downloadSubtitles()">
-      Download TXT
-    </button>
-
-    <div class="msg" id="message"></div>
-
-    <div class="hint">
-      ✔ Best: TED, News, Educational videos<br>
-      ✖ Music, Shorts, AI voice videos may not work
+    <div class="subtitle">
+      English → TXT • Public captions only
     </div>
+
+    <input id="url" type="url" placeholder="Paste YouTube link">
+
+    <button id="btn">Download TXT</button>
+    <div class="status" id="status"></div>
+
+    <footer>
+      No login • No video download • Free
+    </footer>
   </div>
+</div>
 
-  <script>
-    // 🔧 CHANGE THIS TO YOUR REAL BACKEND URL
-    https://youtube-subtitle-backend-i11i.onrender.com
+<script>
+/* ================= CONFIG ================= */
+const BACKEND_URL = "https://YOUR-RENDER-APP.onrender.com/extract";
 
-    let isLoading = false;
+/* ===== SIMPLE CLIENT-SIDE RATE LIMIT ===== */
+const LIMIT = 5;            // requests
+const WINDOW = 10 * 60e3;   // 10 minutes
 
-    function cleanYouTubeUrl(url) {
-      // Remove extra params like ?si=, &feature=
-      try {
-        const u = new URL(url);
-        return u.origin + u.pathname + (u.searchParams.get("v") ? "?v=" + u.searchParams.get("v") : "");
-      } catch {
-        return url.trim();
-      }
-    }
+function allowed() {
+  const now = Date.now();
+  let data = JSON.parse(localStorage.getItem("rate") || "[]");
+  data = data.filter(t => now - t < WINDOW);
+  if (data.length >= LIMIT) return false;
+  data.push(now);
+  localStorage.setItem("rate", JSON.stringify(data));
+  return true;
+}
 
-    async function downloadSubtitles() {
-      if (isLoading) return;
+/* ================= LOGIC ================= */
+const btn = document.getElementById("btn");
+const status = document.getElementById("status");
 
-      const input = document.getElementById("videoUrl");
-      const message = document.getElementById("message");
-      const button = document.getElementById("downloadBtn");
+btn.onclick = async () => {
+  const url = document.getElementById("url").value.trim();
+  if (!url) {
+    status.textContent = "⚠️ Paste a YouTube link";
+    return;
+  }
 
-      let url = input.value.trim();
-      if (!url) {
-        message.innerText = "Please paste a YouTube link.";
-        return;
-      }
+  if (!allowed()) {
+    status.textContent = "⛔ Too many requests. Try later.";
+    return;
+  }
 
-      url = cleanYouTubeUrl(url);
+  btn.disabled = true;
+  status.textContent = "⏳ Fetching subtitles…";
 
-      isLoading = true;
-      button.disabled = true;
-      button.innerText = "Please wait...";
-      message.innerText = "";
+  try {
+    const res = await fetch(
+      `${BACKEND_URL}?url=${encodeURIComponent(url)}`
+    );
 
-      try {
-        const response = await fetch(
-          `${BACKEND_URL}/extract?url=${encodeURIComponent(url)}`
-        );
+    if (!res.ok) throw new Error();
 
-        if (response.status === 429) {
-          message.innerText = "Please wait 15 seconds before trying again.";
-          return;
-        }
+    const text = await res.text();
+    const blob = new Blob([text], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "subtitles.txt";
+    a.click();
 
-        if (!response.ok) {
-          const data = await response.json();
-          message.innerText =
-            data.error ||
-            "Captions exist on YouTube but are not publicly downloadable.";
-          return;
-        }
-
-        const text = await response.text();
-
-        // ⬇️ Auto download TXT
-        const blob = new Blob([text], { type: "text/plain" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "subtitles.txt";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        message.innerText = "Download started.";
-
-      } catch (err) {
-        message.innerText = "Unable to fetch subtitles. Try again later.";
-      } finally {
-        isLoading = false;
-        button.disabled = false;
-        button.innerText = "Download TXT";
-      }
-    }
-  </script>
-
+    status.textContent = "✅ Download started";
+  } catch {
+    status.textContent = "❌ English subtitles not available";
+  } finally {
+    btn.disabled = false;
+  }
+};
+</script>
 </body>
 </html>
